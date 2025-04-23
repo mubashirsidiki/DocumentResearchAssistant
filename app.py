@@ -150,6 +150,15 @@ def get_index(file_path, storage_dir):
         logger.info(f"🔍 RAG: Loading existing vector index from {existing_storage_dir}")
         st.success(f"Using existing vector index for {os.path.basename(file_path)}")
         
+        # Add more prominent UI notification
+        st.info(f"⚡ PERFORMANCE BOOST: Using pre-computed vector store from previous runs instead of creating a new one. This will make processing faster!")
+        
+        # Track vector store reuse in session state for RAG Info tab
+        if "rag_stats" not in st.session_state:
+            st.session_state.rag_stats = {}
+        st.session_state.rag_stats["reused_vector_store"] = True
+        st.session_state.rag_stats["vector_store_path"] = existing_storage_dir
+        
         try:
             ctx = StorageContext.from_defaults(persist_dir=existing_storage_dir)
             index = load_index_from_storage(ctx)
@@ -217,6 +226,14 @@ def get_index(file_path, storage_dir):
         
         # Register this storage location for future use
         vector_store_registry.register_document(file_path, file_hash, storage_dir)
+        
+        # Track that we created a new vector store in session state
+        if "rag_stats" not in st.session_state:
+            st.session_state.rag_stats = {}
+        st.session_state.rag_stats["reused_vector_store"] = False
+        st.session_state.rag_stats["new_vector_store"] = True
+        st.session_state.rag_stats["vector_store_path"] = storage_dir
+        st.session_state.rag_stats["chunks_count"] = nodes_count
         
         return idx
     except Exception as e:
@@ -839,6 +856,22 @@ def main():
                 - **Vector Searches Performed**: {vector_search_count}
                 - **Document Chunks Retrieved**: {chunks_retrieved}
                 """)
+                
+                # Display information about vector store reuse if applicable
+                if "rag_stats" in st.session_state:
+                    if st.session_state.rag_stats.get("reused_vector_store", False):
+                        st.success(f"""
+                        ### ⚡ Using Existing Vector Store
+                        This run is using a pre-computed vector store from previous runs, which saves time 
+                        and computational resources. No need to reprocess the document!
+                        """)
+                    elif st.session_state.rag_stats.get("new_vector_store", False):
+                        chunks_count = st.session_state.rag_stats.get("chunks_count", 0)
+                        st.info(f"""
+                        ### 🆕 Created New Vector Store
+                        A new vector store was created for this document with {chunks_count} chunks.
+                        This vector store will be reused in future runs with the same document.
+                        """)
                 
                 # Display RAG operations
                 st.markdown("### RAG Operations")
