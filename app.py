@@ -12,6 +12,16 @@ import logging
 import hashlib
 import json
 from datetime import datetime
+#######################################################
+from pathlib import Path
+
+# Pick a cache folder inside your app that you control
+cache_dir = Path(os.getcwd()) / "tiktoken_cache"
+cache_dir.mkdir(exist_ok=True)
+
+# Tell tiktoken to use it (must come before any tiktoken import)
+os.environ["TIKTOKEN_CACHE_DIR"] = str(cache_dir)
+#######################################################
 
 # Configure logging
 logging.basicConfig(
